@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import {
   motion,
   useMotionValue,
@@ -9,8 +9,6 @@ import {
   type MotionValue,
 } from "framer-motion";
 import {
-  row1,
-  row2,
   TileVisual,
   TILE_HEIGHT,
   TILE_GAP,
@@ -21,18 +19,33 @@ import {
 const RADIUS = 280;
 const MAX_PUSH = 60;
 const MAX_ROTATE_DEG = 6;
-const SPRING = { stiffness: 180, damping: 18, mass: 0.6 } as const;
+const MAGNETIC_SPRING = { stiffness: 180, damping: 18, mass: 0.6 } as const;
+const LAYOUT_SPRING = {
+  type: "spring",
+  stiffness: 320,
+  damping: 30,
+  mass: 0.7,
+} as const;
 const FAR_AWAY = 99999;
 
-function centerFor(rowIdx: number, colIdx: number, widths: number[]) {
+const SLOT_WIDTHS = [207, 206, 207, 207, 206, 207];
+
+export type SlotTile = { id: number; tile: Tile };
+
+let _nextId = 1_000_000;
+const nextId = () => _nextId++;
+
+function centerForSlot(idx: number) {
+  const rowIdx = Math.floor(idx / 6);
+  const colIdx = idx % 6;
   let x = 0;
-  for (let i = 0; i < colIdx; i++) x += widths[i] + TILE_GAP;
-  x += widths[colIdx] / 2;
+  for (let i = 0; i < colIdx; i++) x += SLOT_WIDTHS[i] + TILE_GAP;
+  x += SLOT_WIDTHS[colIdx] / 2;
   const y = rowIdx * (TILE_HEIGHT + ROW_GAP) + TILE_HEIGHT / 2;
   return { x, y };
 }
 
-function MagneticTile({
+function MagneticInner({
   tile,
   centerX,
   centerY,
@@ -56,7 +69,7 @@ function MagneticTile({
       const falloff = (1 - dist / RADIUS) ** 2;
       const ux = dx / (dist || 1);
       return ux * MAX_PUSH * falloff;
-    }
+    },
   );
   const rawY = useTransform<number, number>(
     [cursorX, cursorY],
@@ -69,7 +82,7 @@ function MagneticTile({
       const falloff = (1 - dist / RADIUS) ** 2;
       const uy = dy / (dist || 1);
       return uy * MAX_PUSH * falloff;
-    }
+    },
   );
   const rawRot = useTransform<number, number>(
     [cursorX, cursorY],
@@ -82,36 +95,49 @@ function MagneticTile({
       const falloff = (1 - dist / RADIUS) ** 2;
       const ux = dx / (dist || 1);
       return ux * MAX_ROTATE_DEG * falloff;
-    }
+    },
   );
 
-  const x = useSpring(rawX, SPRING);
-  const y = useSpring(rawY, SPRING);
-  const rotate = useSpring(rawRot, SPRING);
+  const x = useSpring(rawX, MAGNETIC_SPRING);
+  const y = useSpring(rawY, MAGNETIC_SPRING);
+  const rotate = useSpring(rawRot, MAGNETIC_SPRING);
 
   return (
     <motion.div
-      className="relative shrink-0 will-change-transform"
-      style={{
-        width: tile.width,
-        height: TILE_HEIGHT,
-        x,
-        y,
-        rotate,
-      }}
+      className="w-full h-full will-change-transform"
+      style={{ x, y, rotate }}
     >
       <TileVisual tile={tile} />
     </motion.div>
   );
 }
 
-export default function AboutMagnetic({ variant }: { variant: string }) {
+function isImageKind(kind: Tile["kind"]) {
+  return kind === "image" || kind === "image-offset";
+}
+
+function pickRandom<T>(arr: T[]): T | undefined {
+  if (arr.length === 0) return undefined;
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+export default function AboutMagnetic({
+  variant,
+  initialTiles,
+  bluesClickable,
+}: {
+  variant: string;
+  initialTiles: SlotTile[];
+  bluesClickable: boolean;
+}) {
+  const [tiles, setTiles] = useState<SlotTile[]>(initialTiles);
+  const [animatedIds, setAnimatedIds] = useState<Set<number>>(new Set());
+  const initialIdsRef = useRef<Set<number>>(
+    new Set(initialTiles.map((t) => t.id)),
+  );
   const cursorX = useMotionValue(FAR_AWAY);
   const cursorY = useMotionValue(FAR_AWAY);
   const fieldRef = useRef<HTMLDivElement | null>(null);
-
-  const widthsRow1 = row1.map((t) => t.width);
-  const widthsRow2 = row2.map((t) => t.width);
 
   const handleMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const el = fieldRef.current;
@@ -124,6 +150,52 @@ export default function AboutMagnetic({ variant }: { variant: string }) {
   const handleLeave = () => {
     cursorX.set(FAR_AWAY);
     cursorY.set(FAR_AWAY);
+  };
+
+  const onClick = (slot: number) => {
+    const t = tiles[slot].tile;
+    const clickedIsImage = isImageKind(t.kind);
+    const clickedIsBlue = t.kind === "blue";
+
+    if (!clickedIsImage && !(bluesClickable && clickedIsBlue)) return;
+
+    setTiles((prev) => {
+      const next = prev.slice();
+
+      if (clickedIsImage) {
+        const whites = prev
+          .map((s, i) => (s.tile.kind === "white" ? i : -1))
+          .filter((i) => i >= 0);
+
+        if (whites.length > 0) {
+          const target = pickRandom(whites)!;
+          const moving = next[slot];
+          next[target] = moving;
+          next[slot] = {
+            id: nextId(),
+            tile: { kind: "blue", width: moving.tile.width },
+          };
+          return next;
+        }
+
+        const blues = prev
+          .map((s, i) => (s.tile.kind === "blue" ? i : -1))
+          .filter((i) => i >= 0 && i !== slot);
+        if (blues.length === 0) return prev;
+        const target = pickRandom(blues)!;
+        [next[slot], next[target]] = [next[target], next[slot]];
+        return next;
+      }
+
+      // clicked a blue (only reachable when bluesClickable)
+      const images = prev
+        .map((s, i) => (isImageKind(s.tile.kind) ? i : -1))
+        .filter((i) => i >= 0 && i !== slot);
+      if (images.length === 0) return prev;
+      const target = pickRandom(images)!;
+      [next[slot], next[target]] = [next[target], next[slot]];
+      return next;
+    });
   };
 
   return (
@@ -158,39 +230,53 @@ export default function AboutMagnetic({ variant }: { variant: string }) {
         ref={fieldRef}
         onPointerMove={handleMove}
         onPointerLeave={handleLeave}
-        className="flex flex-col gap-[16px] items-start w-[1320px]"
-        style={{ touchAction: "none" }}
+        className="grid gap-[16px] w-[1320px]"
+        style={{
+          gridTemplateColumns: "207px 206px 207px 207px 206px 207px",
+          gridTemplateRows: "258px 258px",
+          touchAction: "none",
+        }}
       >
-        <div className="flex gap-[16px] items-center w-full">
-          {row1.map((tile, i) => {
-            const { x, y } = centerFor(0, i, widthsRow1);
-            return (
-              <MagneticTile
-                key={`r1-${i}`}
-                tile={tile}
-                centerX={x}
-                centerY={y}
-                cursorX={cursorX}
-                cursorY={cursorY}
-              />
-            );
-          })}
-        </div>
-        <div className="flex gap-[16px] items-center w-full">
-          {row2.map((tile, i) => {
-            const { x, y } = centerFor(1, i, widthsRow2);
-            return (
-              <MagneticTile
-                key={`r2-${i}`}
-                tile={tile}
-                centerX={x}
-                centerY={y}
-                cursorX={cursorX}
-                cursorY={cursorY}
-              />
-            );
-          })}
-        </div>
+        {tiles.map((slot, i) => {
+          const { x, y } = centerForSlot(i);
+          const isClickable =
+            isImageKind(slot.tile.kind) ||
+            (bluesClickable && slot.tile.kind === "blue");
+          const isSpawned = !initialIdsRef.current.has(slot.id);
+          const shouldAnimate = isSpawned && !animatedIds.has(slot.id);
+          return (
+            <motion.div
+              key={slot.id}
+              layout
+              transition={{ layout: LAYOUT_SPRING }}
+              onClick={() => onClick(i)}
+              className={`relative ${isClickable ? "cursor-pointer" : ""}`}
+            >
+              <div
+                className={`w-full h-full ${shouldAnimate ? "tile-spawn" : ""}`}
+                onAnimationEnd={
+                  shouldAnimate
+                    ? () =>
+                        setAnimatedIds((prev) => {
+                          if (prev.has(slot.id)) return prev;
+                          const next = new Set(prev);
+                          next.add(slot.id);
+                          return next;
+                        })
+                    : undefined
+                }
+              >
+                <MagneticInner
+                  tile={slot.tile}
+                  centerX={x}
+                  centerY={y}
+                  cursorX={cursorX}
+                  cursorY={cursorY}
+                />
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
     </section>
   );
