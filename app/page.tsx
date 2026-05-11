@@ -1,65 +1,60 @@
-import Image from "next/image";
+import { row1, row2, TileEl } from "./about-shared";
+import AboutMagnetic from "./about-magnetic";
+import AboutCycle from "./about-cycle";
+import AboutScroll from "./about-scroll";
+
+function AboutSection({ variant }: { variant: string }) {
+  return (
+    <section className="flex flex-col gap-[60px] items-center py-[160px] w-[1320px] max-w-full">
+      <div className="flex items-end justify-between w-[1320px]">
+        <div className="flex flex-col items-start w-[652px]">
+          <div className="flex flex-col gap-[24px] items-start w-full">
+            <div className="flex gap-[10px] items-center justify-center">
+              <p className="font-mono font-medium text-[14px] leading-[18px] tracking-[0.56px] uppercase text-grey-2 whitespace-nowrap">
+                {variant}
+              </p>
+            </div>
+            <h1 className="font-rethink font-semibold text-[60px] leading-[64px] tracking-[-0.6px] text-black">
+              Jsme seniorní tým
+              <br aria-hidden="true" />
+              s chutí bořit průměr
+            </h1>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="bg-brand-blue h-[50px] flex items-center justify-center px-[24px] rounded-[1px] cursor-pointer"
+        >
+          <span className="font-inter font-semibold text-[16px] leading-[18px] text-white whitespace-nowrap">
+            Poznejte nás
+          </span>
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-[16px] items-start w-[1320px]">
+        <div className="flex gap-[16px] items-center w-full">
+          {row1.map((tile, i) => (
+            <TileEl key={`r1-${i}`} tile={tile} />
+          ))}
+        </div>
+        <div className="flex gap-[16px] items-center w-full">
+          {row2.map((tile, i) => (
+            <TileEl key={`r2-${i}`} tile={tile} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="bg-white w-full flex flex-col items-center">
+      <AboutMagnetic variant="O nás" />
+      <AboutCycle variant="O nás" />
+      <AboutScroll variant="O nás" />
+      <div aria-hidden="true" className="h-screen w-full" />
+    </main>
   );
 }
