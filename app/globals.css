@@ -1,23 +1,27 @@
 @import "tailwindcss";
 
+@source inline("tile-spawn");
+
 @theme {
   --color-brand-blue: #1d04ff;
   --color-grey-2: #7a7a7a;
   --font-rethink: var(--font-rethink-sans);
   --font-mono: var(--font-roboto-mono);
   --font-inter: var(--font-inter);
+}
 
-  --animate-tile-spawn: tile-spawn 0.22s ease-out;
+@utility tile-spawn {
+  animation: tile-spawn 0.22s ease-out;
+}
 
-  @keyframes tile-spawn {
-    from {
-      transform: scale(0.85);
-      opacity: 0;
-    }
-    to {
-      transform: scale(1);
-      opacity: 1;
-    }
+@keyframes tile-spawn {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
